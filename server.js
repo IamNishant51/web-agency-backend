@@ -11,7 +11,7 @@ const app = express();
 
 // --- IMPORTANT: UPDATE THIS LINE ---
 app.use(cors({
-    origin: 'http://localhost:5173' // <--- CHANGE THIS TO YOUR FRONTEND'S PORT
+    origin: 'https://nishant-xd.vercel.app' // <--- CHANGE THIS TO YOUR FRONTEND'S PORT
 }));
 // --- END IMPORTANT ---
 
