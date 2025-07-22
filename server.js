@@ -12,7 +12,7 @@ const app = express();
 // --- IMPORTANT: UPDATE THIS LINE ---
 app.use(
   cors({
-    origin: "https://web-ajency.vercel.app/", // <--- CHANGE THIS TO YOUR FRONTEND'S PORT
+    origin: "https://web-ajency.vercel.app", // <--- Remove trailing slash to match browser origin exactly
   })
 );
 // --- END IMPORTANT ---
