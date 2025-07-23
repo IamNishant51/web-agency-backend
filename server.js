@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+// const morgan = require('morgan'); // Optional: Uncomment and install if you want request logging
 
 dotenv.config();
 
@@ -14,14 +15,16 @@ const app = express();
 // Security and performance middlewares
 app.use(helmet());
 app.use(compression());
+// app.use(morgan('tiny')); // Optional: Log requests, 'tiny' is less verbose than 'dev'
 
-// CORS setup (use env var or fallback)
-const allowedOrigin =
-  process.env.ALLOWED_ORIGIN || "https://web-bridge-lac.vercel.app"; // <-- REMOVED THE TRAILING SLASH
+// CORS setup
+const allowedOrigin = process.env.ALLOWED_ORIGIN || "https://web-bridge-lac.vercel.app";
 app.use(
   cors({
     origin: allowedOrigin,
-    optionsSuccessStatus: 200,
+    optionsSuccessStatus: 204, // Changed from 200 to 204 for OPTIONS preflight requests
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Explicitly list methods
+    credentials: true, // If you send cookies or authorization headers
   })
 );
 
@@ -29,14 +32,11 @@ app.use(express.json({ limit: "1mb" }));
 
 // MongoDB Connection
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI) // Removed deprecated options
   .then(() => console.log("MongoDB connected successfully!"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Message Schema and Model (define once)
+// Message Schema and Model
 const messageSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
@@ -70,6 +70,7 @@ app.post("/api/contact", async (req, res) => {
     await newMessage.save();
     res.status(200).json({ message: "Message sent successfully!" });
   } catch (error) {
+    console.error("Error saving message:", error); // More specific error logging
     res.status(500).json({ error: "Failed to send message." });
   }
 });
