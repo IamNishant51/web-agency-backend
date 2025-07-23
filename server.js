@@ -170,7 +170,7 @@ app.get(
     const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
-    // Send token as cookie or redirect with token
+    // Always redirect to frontend root with token
     res.redirect(`${process.env.ALLOWED_ORIGIN}/?token=${token}`);
   }
 );
@@ -186,6 +186,7 @@ app.get(
     const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
+    // Always redirect to frontend root with token
     res.redirect(`${process.env.ALLOWED_ORIGIN}/?token=${token}`);
   }
 );
