@@ -172,6 +172,7 @@ app.get(
     });
     // Always redirect to frontend root with token
     res.redirect(`${process.env.ALLOWED_ORIGIN}/?token=${token}`);
+    
   }
 );
 
