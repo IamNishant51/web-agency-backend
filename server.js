@@ -17,7 +17,7 @@ app.use(compression());
 
 // CORS setup (use env var or fallback)
 const allowedOrigin =
-  process.env.ALLOWED_ORIGIN || "https://web-ajency.vercel.app";
+  process.env.ALLOWED_ORIGIN || "https://web-bridge-lac.vercel.app/";
 app.use(
   cors({
     origin: allowedOrigin,
