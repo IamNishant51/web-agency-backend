@@ -6,6 +6,12 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const GitHubStrategy = require("passport-github2").Strategy;
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+const session = require("express-session");
 
 dotenv.config();
 
@@ -14,6 +20,15 @@ const app = express();
 // Security and performance middlewares
 app.use(helmet());
 app.use(compression());
+app.use(cookieParser());
+app.use(
+  session({
+    secret: process.env.JWT_SECRET || "secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }, // Set to true if using HTTPS
+  })
+);
 
 // CORS setup (use env var or fallback)
 const allowedOrigin =
@@ -21,6 +36,7 @@ const allowedOrigin =
 app.use(
   cors({
     origin: allowedOrigin,
+    credentials: true,
     optionsSuccessStatus: 200,
   })
 );
@@ -35,6 +51,17 @@ mongoose
   })
   .then(() => console.log("MongoDB connected successfully!"))
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// User Schema and Model
+const userSchema = new mongoose.Schema({
+  provider: String,
+  providerId: String,
+  name: String,
+  email: String,
+  avatar: String,
+  createdAt: { type: Date, default: Date.now },
+});
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 // Message Schema and Model
 const messageSchema = new mongoose.Schema({
@@ -65,6 +92,118 @@ const blogPostSchema = new mongoose.Schema({
 });
 const BlogPost =
   mongoose.models.BlogPost || mongoose.model("BlogPost", blogPostSchema);
+
+// Passport Strategies
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: `${process.env.BASE_URL}/auth/google/callback`,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      let user = await User.findOne({
+        provider: "google",
+        providerId: profile.id,
+      });
+      if (!user) {
+        user = await User.create({
+          provider: "google",
+          providerId: profile.id,
+          name: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: profile.photos[0].value,
+        });
+      }
+      return done(null, user);
+    }
+  )
+);
+
+passport.use(
+  new GitHubStrategy(
+    {
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: `${process.env.BASE_URL}/auth/github/callback`,
+      scope: ["user:email"],
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      let email =
+        (profile.emails && profile.emails[0] && profile.emails[0].value) || "";
+      let user = await User.findOne({
+        provider: "github",
+        providerId: profile.id,
+      });
+      if (!user) {
+        user = await User.create({
+          provider: "github",
+          providerId: profile.id,
+          name: profile.displayName || profile.username,
+          email,
+          avatar: profile.photos[0].value,
+        });
+      }
+      return done(null, user);
+    }
+  )
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
+});
+
+// Auth Routes
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: "/" }),
+  (req, res) => {
+    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    // Send token as cookie or redirect with token
+    res.redirect(`${process.env.ALLOWED_ORIGIN}/?token=${token}`);
+  }
+);
+
+app.get(
+  "/auth/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+app.get(
+  "/auth/github/callback",
+  passport.authenticate("github", { session: false, failureRedirect: "/" }),
+  (req, res) => {
+    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    res.redirect(`${process.env.ALLOWED_ORIGIN}/?token=${token}`);
+  }
+);
+
+// Get current user info from JWT
+app.get("/auth/me", async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: "No token" });
+  try {
+    const token = auth.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-__v");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+  } catch (e) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+});
 
 // Health check endpoint
 app.get("/health", (req, res) => {
