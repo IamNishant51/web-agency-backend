@@ -17,7 +17,7 @@ app.use(compression());
 
 // CORS setup (use env var or fallback)
 const allowedOrigin =
-  process.env.ALLOWED_ORIGIN || "https://web-bridge-lac.vercel.app/";
+  process.env.ALLOWED_ORIGIN || "https://web-bridge-lac.vercel.app"; // <-- REMOVED THE TRAILING SLASH
 app.use(
   cors({
     origin: allowedOrigin,
@@ -78,4 +78,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
