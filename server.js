@@ -45,7 +45,7 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Portfolio Backend API is running!");
+  res.send(" Backend API is running!");
 });
 
 app.post("/api/contact", async (req, res) => {
